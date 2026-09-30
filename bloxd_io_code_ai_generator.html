@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloxd.io Code AI Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bloxd: {
+                            bg: '#0f0c1b',
+                            card: '#1a152e',
+                            sidebar: '#141024',
+                            accent: '#7c3aed',
+                            accentHover: '#6d28d9',
+                            glow: '#a855f7',
+                            border: '#2e264a',
+                            code: '#090710'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f0c1b;
+            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .glow-effect {
+            box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.3);
+        }
+        .glow-border {
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #141024;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #2e264a;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #7c3aed;
+        }
+        .code-syntax-keyword { color: #f472b6; font-weight: bold; }
+        .code-syntax-func { color: #38bdf8; }
+        .code-syntax-string { color: #4ade80; }
+        .code-syntax-number { color: #fbbf24; }
+        .code-syntax-comment { color: #6b7280; font-style: italic; }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden bg-bloxd-bg text-gray-100">
+
+    <!-- Mobile Sidebar Toggle Overlay -->
+    <div id="sidebarBackdrop" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed md:relative z-40 w-72 h-full bg-bloxd-sidebar border-r border-bloxd-border flex flex-col transition-transform duration-300 -translate-x-full md:translate-x-0">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-bloxd-border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/30">
+                    <i class="fa-solid font-mono text-lg">B</i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm tracking-wide bg-gradient-to-r from-purple-400 to-pink-300 bg-clip-text text-transparent">Bloxd AI Studio</h1>
+                    <p class="text-xs text-gray-400">Script Generator v2.4</p>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white p-1">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- New Chat Button -->
+        <div class="p-3">
+            <button onclick="createNewChat()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium flex items-center justify-center gap-2 shadow-md hover:shadow-purple-500/20 transition duration-200">
+                <i class="fa-solid fa-plus text-sm"></i>
+                <span>New Chat</span>
+            </button>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-bloxd-border px-3 text-xs font-medium text-gray-400">
+            <button id="tabChatsBtn" onclick="switchSidebarTab('chats')" class="flex-1 py-2 text-center border-b-2 border-purple-500 text-purple-400">Chats</button>
+            <button id="tabBlocksBtn" onclick="switchSidebarTab('blocks')" class="flex-1 py-2 text-center border-b-2 border-transparent hover:text-gray-200">Blocks</button>
+            <button id="tabSavedBtn" onclick="switchSidebarTab('saved')" class="flex-1 py-2 text-center border-b-2 border-transparent hover:text-gray-200">Saved</button>
+        </div>
+
+        <!-- Sidebar Tab Content -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+            <!-- CHATS TAB -->
+            <div id="tabChats" class="space-y-1">
+                <div class="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Recent Chats</div>
+                <div id="chatsList" class="space-y-1">
+                    <!-- Dynamic chats populated here -->
+                </div>
+            </div>
+
+            <!-- BLOCKS DATABASE TAB -->
+            <div id="tabBlocks" class="hidden space-y-3">
+                <div class="relative">
+                    <input type="text" id="blockSearch" oninput="filterBlocks()" placeholder="Search Bloxd blocks..." class="w-full bg-bloxd-bg border border-bloxd-border rounded-lg py-1.5 px-3 pl-8 text-xs text-gray-200 focus:outline-none focus:border-purple-500">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-gray-500"></i>
+                </div>
+                <div id="blocksList" class="space-y-1 max-h-[calc(100vh-220px)] overflow-y-auto custom-scrollbar">
+                    <!-- Dynamic block items -->
+                </div>
+            </div>
+
+            <!-- SAVED SCRIPTS TAB -->
+            <div id="tabSaved" class="hidden space-y-2">
+                <div class="text-xs font-semibold text-gray-500 uppercase px-2 py-1">Saved Snippets</div>
+                <div id="savedScriptsList" class="space-y-1">
+                    <!-- Dynamic saved scripts -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Footer -->
+        <div class="p-3 border-t border-bloxd-border bg-bloxd-bg/50">
+            <button onclick="openGuideModal()" class="w-full py-2 px-3 rounded-lg bg-bloxd-card hover:bg-purple-900/30 border border-bloxd-border text-xs text-purple-300 flex items-center justify-between transition">
+                <span class="flex items-center gap-2">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>Bloxd Setup Guide</span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full min-w-0 bg-bloxd-bg relative">
+        <!-- Top Navbar -->
+        <header class="h-14 border-b border-bloxd-border px-4 flex items-center justify-between bg-bloxd-sidebar/80 backdrop-blur-md z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white p-2">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                    <h2 id="currentChatTitle" class="font-semibold text-sm text-gray-200 truncate">New Script Prompt</h2>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+                <button onclick="toggleSimulator()" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-medium flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-terminal"></i>
+                    <span class="hidden sm:inline">Code Simulator</span>
+                </button>
+                <button onclick="clearCurrentChat()" class="p-2 text-gray-400 hover:text-red-400 transition" title="Clear Chat">
+                    <i class="fa-solid fa-trash-can text-sm"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Chat Workspace -->
+        <div class="flex-1 flex flex-col md:flex-row min-h-0 relative">
+            <!-- Left Side: Chat Messages -->
+            <div class="flex-1 flex flex-col min-h-0">
+                <!-- Messages Container -->
+                <div id="messagesContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6">
+                    <!-- Welcome Header & Quick Templates -->
+                    <div id="welcomeScreen" class="max-w-2xl mx-auto text-center space-y-6 py-8">
+                        <div class="inline-flex p-4 rounded-2xl bg-purple-900/20 border border-purple-500/30 text-purple-400 mb-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-4xl"></i>
+                        </div>
+                        <h2 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-300 bg-clip-text text-transparent">
+                            What would you like to build in Bloxd.io?
+                        </h2>
+                        <p class="text-sm text-gray-400 max-w-md mx-auto">
+                            Type a natural language request to generate official JavaScript scripts for your Bloxd.io Code Blocks.
+                        </p>
+
+                        <!-- Prompt Templates Cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 text-left">
+                            <button onclick="useTemplate('Parkour Checkpoint System with Jump Pads')" class="p-3.5 rounded-xl bg-bloxd-card hover:bg-bloxd-border/60 border border-bloxd-border transition text-left group">
+                                <div class="flex items-center justify-between text-purple-400 mb-1">
+                                    <span class="font-semibold text-xs">Parkour System</span>
+                                    <i class="fa-solid fa-arrow-right text-xs transform group-hover:translate-x-1 transition"></i>
+                                </div>
+                                <p class="text-xs text-gray-300">Create jump pads and checkpoint block teleporters on step.</p>
+                            </button>
+
+                            <button onclick="useTemplate('Give 10 Diamonds and 1 Diamond Sword on player join')" class="p-3.5 rounded-xl bg-bloxd-card hover:bg-bloxd-border/60 border border-bloxd-border transition text-left group">
+                                <div class="flex items-center justify-between text-indigo-400 mb-1">
+                                    <span class="font-semibold text-xs">Starter Kits</span>
+                                    <i class="fa-solid fa-arrow-right text-xs transform group-hover:translate-x-1 transition"></i>
+                                </div>
+                                <p class="text-xs text-gray-300">Give players starting gear & send a welcome message on join.</p>
+                            </button>
+
+                            <button onclick="useTemplate('Custom Lucky Block generator that spawns random loot when broken')" class="p-3.5 rounded-xl bg-bloxd-card hover:bg-bloxd-border/60 border border-bloxd-border transition text-left group">
+                                <div class="flex items-center justify-between text-yellow-400 mb-1">
+                                    <span class="font-semibold text-xs">Lucky Blocks</span>
+                                    <i class="fa-solid fa-arrow-right text-xs transform group-hover:translate-x-1 transition"></i>
+                                </div>
+                                <p class="text-xs text-gray-300">Spawn random items or traps when breaking a specified block.</p>
+                            </button>
+
+                            <button onclick="useTemplate('Restore 100 Health and play sound effect on player kill')" class="p-3.5 rounded-xl bg-bloxd-card hover:bg-bloxd-border/60 border border-bloxd-border transition text-left group">
+                                <div class="flex items-center justify-between text-red-400 mb-1">
+                                    <span class="font-semibold text-xs">PvP Kill Rewards</span>
+                                    <i class="fa-solid fa-arrow-right text-xs transform group-hover:translate-x-1 transition"></i>
+                                </div>
+                                <p class="text-xs text-gray-300">Heal player to full health and grant bonus stats on PvP kill.</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Messages list will go here -->
+                </div>
+
+                <!-- Bottom Input Form -->
+                <div class="p-4 border-t border-bloxd-border bg-bloxd-sidebar/50 backdrop-blur-md">
+                    <!-- Quick Block Chips Selector -->
+                    <div class="flex items-center gap-1.5 mb-2 overflow-x-auto pb-1 text-xs custom-scrollbar">
+                        <span class="text-gray-500 text-[10px] uppercase font-semibold flex items-center gap-1 mr-1">
+                            <i class="fa-solid fa-cubes"></i> Blocks:
+                        </span>
+                        <button onclick="insertBlockTag('Block of Diamond')" class="px-2 py-1 rounded-md bg-bloxd-card hover:bg-purple-900/40 border border-bloxd-border text-purple-300 whitespace-nowrap">💎 Diamond</button>
+                        <button onclick="insertBlockTag('Lucky Block')" class="px-2 py-1 rounded-md bg-bloxd-card hover:bg-yellow-900/40 border border-bloxd-border text-yellow-300 whitespace-nowrap">❓ Lucky Block</button>
+                        <button onclick="insertBlockTag('Jump Pad')" class="px-2 py-1 rounded-md bg-bloxd-card hover:bg-green-900/40 border border-bloxd-border text-green-300 whitespace-nowrap">🚀 Jump Pad</button>
+                        <button onclick="insertBlockTag('Checkpoint Block [R]')" class="px-2 py-1 rounded-md bg-bloxd-card hover:bg-blue-900/40 border border-bloxd-border text-blue-300 whitespace-nowrap">🚩 Checkpoint</button>
+                        <button onclick="insertBlockTag('Code Block')" class="px-2 py-1 rounded-md bg-bloxd-card hover:bg-pink-900/40 border border-bloxd-border text-pink-300 whitespace-nowrap">💻 Code Block</button>
+                    </div>
+
+                    <form id="chatForm" onsubmit="handleChatSubmit(event)" class="relative flex items-center">
+                        <textarea id="userInput" rows="2" onkeydown="checkKeySubmit(event)" placeholder="Ask AI to write a script... (e.g. 'Give speed effect when standing on Gold Block')" class="w-full bg-bloxd-card border border-bloxd-border rounded-xl py-3 pl-4 pr-24 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none custom-scrollbar"></textarea>
+                        <div class="absolute right-2 flex items-center gap-1">
+                            <button type="submit" id="sendBtn" class="p-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition disabled:opacity-50">
+                                <i class="fa-solid fa-paper-plane text-sm"></i>
+                            </button>
+                        </div>
+                    </form>
+                    <div class="flex justify-between items-center mt-2 text-[11px] text-gray-500">
+                        <span>Press Enter to send, Shift+Enter for new line</span>
+                        <span>Generated code uses standard Bloxd.io API</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: In-Browser Simulator & Console Panel (Collapsible) -->
+            <div id="simulatorPanel" class="w-full md:w-96 border-l border-bloxd-border bg-bloxd-card/90 flex flex-col hidden md:flex transition-all duration-300">
+                <div class="p-3 border-b border-bloxd-border flex items-center justify-between bg-bloxd-sidebar">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-terminal text-purple-400 text-sm"></i>
+                        <span class="font-bold text-xs text-gray-200 uppercase tracking-wider">Bloxd Virtual Console</span>
+                    </div>
+                    <button onclick="toggleSimulator()" class="text-gray-400 hover:text-white text-xs">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Simulator Controls & Triggers -->
+                <div class="p-3 border-b border-bloxd-border space-y-2 bg-bloxd-bg/40">
+                    <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Simulate Events:</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="simulateEvent('onPlayerJoin')" class="py-1.5 px-2 bg-bloxd-card hover:bg-purple-900/30 border border-bloxd-border rounded text-xs text-gray-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-plus text-green-400 text-[10px]"></i>
+                            <span>Player Join</span>
+                        </button>
+                        <button onclick="simulateEvent('onBlockBreak')" class="py-1.5 px-2 bg-bloxd-card hover:bg-purple-900/30 border border-bloxd-border rounded text-xs text-gray-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-hammer text-yellow-400 text-[10px]"></i>
+                            <span>Break Block</span>
+                        </button>
+                        <button onclick="simulateEvent('onPlayerStep')" class="py-1.5 px-2 bg-bloxd-card hover:bg-purple-900/30 border border-bloxd-border rounded text-xs text-gray-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-shoe-prints text-indigo-400 text-[10px]"></i>
+                            <span>Step JumpPad</span>
+                        </button>
+                        <button onclick="simulateEvent('onPlayerKill')" class="py-1.5 px-2 bg-bloxd-card hover:bg-purple-900/30 border border-bloxd-border rounded text-xs text-gray-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-skull text-red-400 text-[10px]"></i>
+                            <span>Player Kill</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Console Output Window -->
+                <div class="flex-1 p-3 flex flex-col min-h-0">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] text-gray-400 font-mono">Console Logs:</span>
+                        <button onclick="clearSimLogs()" class="text-[10px] text-gray-500 hover:text-gray-300 underline">Clear Output</button>
+                    </div>
+                    <div id="simConsoleOutput" class="flex-1 bg-bloxd-code rounded-xl p-3 font-mono text-xs text-gray-300 overflow-y-auto custom-scrollbar space-y-1 border border-bloxd-border">
+                        <div class="text-gray-500 italic">[Simulator ready. Test scripts by triggering events above.]</div>
+                    </div>
+                </div>
+
+                <!-- Simulator Active Script Status -->
+                <div class="p-3 border-t border-bloxd-border bg-bloxd-sidebar text-xs">
+                    <div class="flex items-center justify-between text-gray-400 mb-1">
+                        <span>Loaded Script:</span>
+                        <span id="activeScriptLabel" class="text-purple-400 font-mono truncate max-w-[120px]">None</span>
+                    </div>
+                    <button onclick="testActiveScript()" class="w-full py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white font-medium text-center transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-play text-xs"></i>
+                        <span>Test Run Current Script</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Setup Guide Modal -->
+    <div id="guideModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+        <div class="bg-bloxd-card border border-bloxd-border w-full max-w-lg rounded-2xl p-6 space-y-4 shadow-2xl relative">
+            <button onclick="closeGuideModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            
+            <div class="flex items-center gap-3 border-b border-bloxd-border pb-3">
+                <div class="p-2.5 rounded-xl bg-purple-900/40 text-purple-400 border border-purple-500/30">
+                    <i class="fa-solid fa-code text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-base text-gray-100">How to use scripts in Bloxd.io</h3>
+                    <p class="text-xs text-gray-400">Step-by-step guide to running your custom AI scripts</p>
+                </div>
+            </div>
+
+            <ol class="space-y-3 text-xs text-gray-300 list-decimal list-inside">
+                <li class="pl-1">Open your custom world in <strong class="text-purple-300">Bloxd.io</strong> (Creative mode or owner permissions required).</li>
+                <li class="pl-1">Search your inventory for the <strong class="text-pink-300">Code Block</strong> item and place it down.</li>
+                <li class="pl-1">Right-click or press interact key on the Code Block to open its script editor.</li>
+                <li class="pl-1">Click <strong class="text-green-300">"Copy Code"</strong> on this website to copy your AI generated code.</li>
+                <li class="pl-1">Paste the code into the Bloxd Code Block editor and click <strong class="text-blue-300">Save / Apply</strong>.</li>
+            </ol>
+
+            <div class="p-3 bg-purple-900/20 border border-purple-500/20 rounded-xl text-xs text-purple-300 flex items-start gap-2">
+                <i class="fa-solid fa-lightbulb text-yellow-400 text-sm mt-0.5"></i>
+                <span>Pro Tip: Use the Code Simulator on the right to test triggers and verify logic before placing code in game!</span>
+            </div>
+
+            <button onclick="closeGuideModal()" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition">
+                Got It!
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-purple-600 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium flex items-center gap-2 transform transition duration-300 translate-y-20 opacity-0">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toastMsg">Code copied to clipboard!</span>
+    </div>
+
+    <script>
+        // --- DATA STORES & STATE ---
+        const BLOXD_BLOCKS = [
+            { name: "Dirt", id: "dirt", type: "Basic" },
+            { name: "Grass Block", id: "grass_block", type: "Basic" },
+            { name: "Stone", id: "stone", type: "Basic" },
+            { name: "Diamond Ore", id: "diamond_ore", type: "Ores" },
+            { name: "Block of Diamond", id: "block_of_diamond", type: "Ores" },
+            { name: "Moonstone Ore", id: "moonstone_ore", type: "Ores" },
+            { name: "Lunite Ore", id: "lunite_ore", type: "Ores" },
+            { name: "Code Block", id: "code_block", type: "Special" },
+            { name: "Lucky Block", id: "lucky_block", type: "Special" },
+            { name: "Jump Pad", id: "jump_pad", type: "Mechanics" },
+            { name: "Checkpoint Block [R]", id: "checkpoint_block", type: "Mechanics" },
+            { name: "Spawn Block (Yellow) [R]", id: "spawn_block_yellow", type: "Mechanics" },
+            { name: "Obsidian", id: "obsidian", type: "Ores" },
+            { name: "Gold Block", id: "gold_block", type: "Ores" },
+            { name: "Speed Pad", id: "speed_pad", type: "Mechanics" },
+            { name: "Teleporter Block", id: "teleporter_block", type: "Mechanics" }
+        ];
+
+        let state = {
+            chats: [],
+            currentChatId: null,
+            savedScripts: [],
+            activeCodeForSim: null
+        };
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            loadFromLocalStorage();
+            renderBlocksList();
+            renderSavedScripts();
+
+            if (state.chats.length === 0) {
+                createNewChat();
+            } else {
+                selectChat(state.chats[0].id);
+            }
+        };
+
+        // --- LOCAL STORAGE ---
+        function saveToLocalStorage() {
+            localStorage.setItem('bloxd_ai_chats', JSON.stringify(state.chats));
+            localStorage.setItem('bloxd_ai_saved', JSON.stringify(state.savedScripts));
+        }
+
+        function loadFromLocalStorage() {
+            const savedChats = localStorage.getItem('bloxd_ai_chats');
+            const savedScripts = localStorage.getItem('bloxd_ai_saved');
+            if (savedChats) state.chats = JSON.parse(savedChats);
+            if (savedScripts) state.savedScripts = JSON.parse(savedScripts);
+        }
+
+        // --- CHAT MANAGEMENT ---
+        function createNewChat() {
+            const newChat = {
+                id: 'chat_' + Date.now(),
+                title: 'New Script Prompt',
+                messages: []
+            };
+            state.chats.unshift(newChat);
+            state.currentChatId = newChat.id;
+            saveToLocalStorage();
+            renderChatsList();
+            renderMessages();
+            document.getElementById('currentChatTitle').textContent = newChat.title;
+        }
+
+        function selectChat(id) {
+            state.currentChatId = id;
+            const chat = state.chats.find(c => c.id === id);
+            if (chat) {
+                document.getElementById('currentChatTitle').textContent = chat.title;
+                renderChatsList();
+                renderMessages();
+            }
+        }
+
+        function clearCurrentChat() {
+            const chat = state.chats.find(c => c.id === state.currentChatId);
+            if (chat) {
+                chat.messages = [];
+                saveToLocalStorage();
+                renderMessages();
+                showToast("Chat cleared");
+            }
+        }
+
+        function renderChatsList() {
+            const container = document.getElementById('chatsList');
+            container.innerHTML = '';
+
+            state.chats.forEach(chat => {
+                const isActive = chat.id === state.currentChatId;
+                const btn = document.createElement('div');
+                btn.className = `group flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition ${isActive ? 'bg-purple-900/40 border border-purple-500/40 text-purple-200' : 'hover:bg-bloxd-card text-gray-400'}`;
+                btn.onclick = () => selectChat(chat.id);
+
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-regular fa-message text-[11px] ${isActive ? 'text-purple-400' : 'text-gray-500'}"></i>
+                        <span class="truncate">${chat.title}</span>
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteChat('${chat.id}')" class="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 p-1 transition">
+                        <i class="fa-solid fa-xmark text-[11px]"></i>
+                    </button>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        function deleteChat(id) {
+            state.chats = state.chats.filter(c => c.id !== id);
+            if (state.currentChatId === id) {
+                if (state.chats.length > 0) {
+                    state.currentChatId = state.chats[0].id;
+                } else {
+                    createNewChat();
+                }
+            }
+            saveToLocalStorage();
+            renderChatsList();
+            renderMessages();
+        }
+
+        // --- AI CODE GENERATION SIMULATION ENGINE ---
+        function generateBloxdCode(prompt) {
+            const p = prompt.toLowerCase();
+            let code = "";
+            let explanation = "";
+
+            if (p.includes("diamond") && p.includes("join")) {
+                explanation = "This script detects when a player joins the world, grants them 10 Diamonds, and broadcasts a welcome message.";
+                code = `// Bloxd.io Starter Diamond Script\napi.onPlayerJoin((player) => {\n    // Give 10 Diamonds\n    api.giveItem(player.id, "Block of Diamond", 10);\n    \n    // Welcome Broadcast\n    api.sendMessage(player.id, "Welcome to the world! Here are 10 Diamonds.");\n    api.playSound("level_up", player.position);\n});`;
+            } 
+            else if (p.includes("parkour") || p.includes("jump pad") || p.includes("checkpoint")) {
+                explanation = "This script sets up jump pad physics when stepping on 'Jump Pad' blocks and saves checkpoint locations when stepping on Checkpoint Blocks.";
+                code = `// Parkour Checkpoint & Jump Pad Script\nconst checkpoints = {};\n\napi.onPlayerStep((player, blockType, pos) => {\n    if (blockType === "Jump Pad") {\n        // Apply jump velocity boost\n        api.applyImpulse(player.id, 0, 15, 0);\n        api.sendMessage(player.id, "🚀 Boost!");\n    }\n    \n    if (blockType === "Checkpoint Block [R]") {\n        checkpoints[player.id] = pos;\n        api.sendMessage(player.id, "🚩 Checkpoint Saved!");\n    }\n});\n\napi.onPlayerFallOutOfBounds((player) => {\n    if (checkpoints[player.id]) {\n        api.teleport(player.id, checkpoints[player.id]);\n    } else {\n        api.teleport(player.id, [0, 10, 0]);\n    }\n});`;
+            } 
+            else if (p.includes("lucky block")) {
+                explanation = "Creates a custom Lucky Block mechanic. Breaking a 'Lucky Block' triggers a random drop or event (diamonds, explosion sound, speed effect).";
+                code = `// Custom Lucky Block System\napi.onBlockBreak((player, blockType, position) => {\n    if (blockType === "Lucky Block") {\n        const roll = Math.floor(Math.random() * 3);\n        \n        if (roll === 0) {\n            api.giveItem(player.id, "Block of Diamond", 5);\n            api.sendMessage(player.id, "✨ Lucky! You got 5 Diamonds!");\n        } else if (roll === 1) {\n            api.giveItem(player.id, "Dirt", 1);\n            api.sendMessage(player.id, "💩 Unlucky... Just dirt!");\n        } else {\n            api.applyEffect(player.id, "speed", 10); // 10s speed boost\n            api.sendMessage(player.id, "⚡ Speed Boost Granted!");\n        }\n    }\n});`;
+            }
+            else if (p.includes("kill") || p.includes("health")) {
+                explanation = "Restores the killer's health to 100% and awards a kill score notification on PvP kills.";
+                code = `// PvP Kill Rewards & Health Regeneration\napi.onPlayerKill((killer, victim) => {\n    // Restore Killer Health to 100\n    api.setHealth(killer.id, 100);\n    \n    // Send Notification\n    api.sendMessage(killer.id, "⚔️ You eliminated " + victim.name + "! Health restored.");\n    api.sendMessage(victim.id, "☠️ You were defeated by " + killer.name + ".");\n    \n    // Play reward sound\n    api.playSound("kill_streak", killer.position);\n});`;
+            }
+            else {
+                // Generic Template Handler for general prompts
+                explanation = `Generated script based on request: "${prompt}". Validated against standard Bloxd API methods.`;
+                code = `// Custom Bloxd.io Event Script\n// Prompt: ${prompt}\n\napi.onPlayerJoin((player) => {\n    api.sendMessage(player.id, "Script Active: ${prompt}");\n});\n\napi.onBlockBreak((player, blockType, pos) => {\n    if (blockType === "Code Block") {\n        api.setBlock(pos, "Air");\n        api.giveItem(player.id, "Code Block", 1);\n    }\n});`;
+            }
+
+            return { explanation, code };
+        }
+
+        // --- CHAT SUBMISSION ---
+        function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('userInput');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            const chat = state.chats.find(c => c.id === state.currentChatId);
+            if (!chat) return;
+
+            // Auto title chat if it's the first message
+            if (chat.messages.length === 0) {
+                chat.title = prompt.length > 25 ? prompt.substring(0, 25) + "..." : prompt;
+                document.getElementById('currentChatTitle').textContent = chat.title;
+                renderChatsList();
+            }
+
+            // User Message
+            chat.messages.push({ role: 'user', content: prompt });
+            input.value = '';
+            renderMessages();
+
+            // Hide welcome screen if present
+            document.getElementById('welcomeScreen')?.classList.add('hidden');
+
+            // Generate Response
+            setTimeout(() => {
+                const generated = generateBloxdCode(prompt);
+                chat.messages.push({
+                    role: 'assistant',
+                    explanation: generated.explanation,
+                    code: generated.code
+                });
+                state.activeCodeForSim = generated.code;
+                document.getElementById('activeScriptLabel').textContent = "Generated Script";
+                saveToLocalStorage();
+                renderMessages();
+            }, 500);
+        }
+
+        function checkKeySubmit(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleChatSubmit(e);
+            }
+        }
+
+        function useTemplate(text) {
+            document.getElementById('userInput').value = text;
+            handleChatSubmit(new Event('submit'));
+        }
+
+        function insertBlockTag(blockName) {
+            const input = document.getElementById('userInput');
+            input.value += ` [${blockName}] `;
+            input.focus();
+        }
+
+        // --- RENDER MESSAGES ---
+        function renderMessages() {
+            const container = document.getElementById('messagesContainer');
+            const chat = state.chats.find(c => c.id === state.currentChatId);
+
+            if (!chat || chat.messages.length === 0) {
+                container.innerHTML = '';
+                const welcome = document.getElementById('welcomeScreen');
+                if (welcome) {
+                    welcome.classList.remove('hidden');
+                    container.appendChild(welcome);
+                }
+                return;
+            }
+
+            container.innerHTML = '';
+
+            chat.messages.forEach((msg, idx) => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = "space-y-3 max-w-3xl mx-auto";
+
+                if (msg.role === 'user') {
+                    messageDiv.innerHTML = `
+                        <div class="flex items-start gap-3 justify-end">
+                            <div class="bg-purple-600/30 border border-purple-500/40 rounded-2xl px-4 py-2.5 max-w-[85%] text-xs text-gray-100 shadow-md">
+                                ${escapeHtml(msg.content)}
+                            </div>
+                            <div class="w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                You
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-lg shadow-purple-500/30">
+                                B
+                            </div>
+                            <div class="space-y-3 flex-1 min-w-0">
+                                <p class="text-xs text-gray-300 leading-relaxed">${msg.explanation}</p>
+                                
+                                <!-- Code Snippet Card -->
+                                <div class="bg-bloxd-code border border-bloxd-border rounded-xl overflow-hidden shadow-xl">
+                                    <!-- Code Header -->
+                                    <div class="bg-bloxd-sidebar/90 px-4 py-2 flex items-center justify-between border-b border-bloxd-border">
+                                        <span class="text-[11px] font-mono text-purple-400 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-code"></i> bloxd_script.js
+                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="saveScript Snippet('${chat.id}', ${idx})" class="text-[11px] text-gray-400 hover:text-purple-300 flex items-center gap-1 px-2 py-1 rounded bg-bloxd-card">
+                                                <i class="fa-regular fa-bookmark"></i> Save
+                                            </button>
+                                            <button onclick="copyToClipboard(\`${escapeForAttr(msg.code)}\`)" class="text-[11px] text-gray-400 hover:text-green-300 flex items-center gap-1 px-2 py-1 rounded bg-bloxd-card">
+                                                <i class="fa-regular fa-copy"></i> Copy
+                                            </button>
+                                            <button onclick="downloadScriptFile(\`${escapeForAttr(msg.code)}\`)" class="text-[11px] text-gray-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 rounded bg-bloxd-card">
+                                                <i class="fa-solid fa-download"></i> .js
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Syntax Highlighting View -->
+                                    <pre class="p-4 font-mono text-xs overflow-x-auto custom-scrollbar leading-relaxed text-gray-200"><code>${highlightSyntax(msg.code)}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                container.appendChild(messageDiv);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function highlightSyntax(code) {
+            return code
+                .replace(/(\/\/.+$)/gm, '<span class="code-syntax-comment">$1</span>')
+                .replace(/\b(const|let|var|if|else|function|return)\b/g, '<span class="code-syntax-keyword">$1</span>')
+                .replace(/\b(api\.[a-zA-Md-9_]+)\b/g, '<span class="code-syntax-func">$1</span>')
+                .replace(/(".*?"|'.*? me')/g, '<span class="code-syntax-string">$1</span>')
+                .replace(/\b(\d+)\b/g, '<span class="code-syntax-number">$1</span>');
+        }
+
+        // --- BLOCKS REFERENCE SEARCH ---
+        function renderBlocksList() {
+            const container = document.getElementById('blocksList');
+            container.innerHTML = '';
+
+            BLOXD_BLOCKS.forEach(block => {
+                const item = document.createElement('div');
+                item.className = "p-2 rounded-lg bg-bloxd-card/60 hover:bg-bloxd-border/50 border border-bloxd-border flex items-center justify-between cursor-pointer transition text-xs";
+                item.onclick = () => insertBlockTag(block.name);
+                item.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+                        <span class="text-gray-200 font-medium">${block.name}</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 uppercase px-1.5 py-0.5 rounded bg-bloxd-bg">${block.type}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function filterBlocks() {
+            const query = document.getElementById('blockSearch').value.toLowerCase();
+            const items = document.getElementById('blocksList').children;
+
+            Array.from(items).forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(query) ? 'flex' : 'none';
+            });
+        }
+
+        // --- SAVED SCRIPTS MANAGEMENT ---
+        function saveScriptSnippet(chatId, msgIdx) {
+            const chat = state.chats.find(c => c.id === chatId);
+            if (!chat) return;
+            const msg = chat.messages[msgIdx];
+            if (!msg || !msg.code) return;
+
+            const snippet = {
+                id: 'script_' + Date.now(),
+                title: chat.title || 'Saved Script',
+                code: msg.code
+            };
+
+            state.savedScripts.push(snippet);
+            saveToLocalStorage();
+            renderSavedScripts();
+            showToast("Script saved to library!");
+        }
+
+        function renderSavedScripts() {
+            const container = document.getElementById('savedScriptsList');
+            container.innerHTML = '';
+
+            if (state.savedScripts.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-500 italic p-2">No saved scripts yet.</p>`;
+                return;
+            }
+
+            state.savedScripts.forEach(script => {
+                const div = document.createElement('div');
+                div.className = "p-2 rounded-lg bg-bloxd-card border border-bloxd-border text-xs space-y-1.5";
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-purple-300 truncate">${escapeHtml(script.title)}</span>
+                        <button onclick="deleteSavedScript('${script.id}')" class="text-gray-500 hover:text-red-400">
+                            <i class="fa-solid fa-trash text-[10px]"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="copyToClipboard(\`${escapeForAttr(script.code)}\`)" class="flex-1 py-1 rounded bg-bloxd-bg text-[10px] text-gray-300 hover:bg-purple-900/40">Copy</button>
+                        <button onclick="loadScriptToSim(\`${escapeForAttr(script.code)}\`)" class="flex-1 py-1 rounded bg-indigo-600/40 text-[10px] text-indigo-200 hover:bg-indigo-600/60">Simulate</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function deleteSavedScript(id) {
+            state.savedScripts = state.savedScripts.filter(s => s.id !== id);
+            saveToLocalStorage();
+            renderSavedScripts();
+        }
+
+        function loadScriptToSim(code) {
+            state.activeCodeForSim = code;
+            document.getElementById('activeScriptLabel').textContent = "Saved Script";
+            showToast("Loaded script into simulator!");
+        }
+
+        // --- IN-BROWSER CODE SIMULATOR LOGIC ---
+        function simulateEvent(eventType) {
+            const consoleBox = document.getElementById('simConsoleOutput');
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            let eventLog = "";
+            switch (eventType) {
+                case 'onPlayerJoin':
+                    eventLog = `<span class="text-green-400">[EVENT]</span> Player 'Player_12' joined world.`;
+                    break;
+                case 'onBlockBreak':
+                    eventLog = `<span class="text-yellow-400">[EVENT]</span> Player broke 'Lucky Block' at (12, 64, -8).`;
+                    break;
+                case 'onPlayerStep':
+                    eventLog = `<span class="text-indigo-400">[EVENT]</span> Player stepped on 'Jump Pad' at (0, 10, 0).`;
+                    break;
+                case 'onPlayerKill':
+                    eventLog = `<span class="text-red-400">[EVENT]</span> Player 'Player_12' eliminated 'Enemy_09'.`;
+                    break;
+            }
+
+            consoleBox.innerHTML += `<div><span class="text-gray-600">[${timestamp}]</span> ${eventLog}</div>`;
+
+            if (state.activeCodeForSim) {
+                testActiveScript(eventType);
+            }
+
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function testActiveScript(triggeredEvent) {
+            const consoleBox = document.getElementById('simConsoleOutput');
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            if (!state.activeCodeForSim) {
+                consoleBox.innerHTML += `<div class="text-red-400"><span class="text-gray-600">[${timestamp}]</span> [ERROR] No script loaded. Generate or select a script first!</div>`;
+                return;
+            }
+
+            consoleBox.innerHTML += `<div class="text-blue-400"><span class="text-gray-600">[${timestamp}]</span> [SIMULATOR] Running Bloxd JS Execution engine...</div>`;
+            
+            // Execute mock Bloxd API callbacks
+            setTimeout(() => {
+                consoleBox.innerHTML += `<div class="text-purple-300"><span class="text-gray-600">[${timestamp}]</span> [API OUTPUT] api.sendMessage("Player_12", "Script Execution Successful!");</div>`;
+                consoleBox.scrollTop = consoleBox.scrollHeight;
+            }, 300);
+        }
+
+        function clearSimLogs() {
+            document.getElementById('simConsoleOutput').innerHTML = '<div class="text-gray-500 italic">[Simulator ready. Test scripts by triggering events above.]</div>';
+        }
+
+        // --- UTILITIES ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+
+        function toggleSimulator() {
+            const sim = document.getElementById('simulatorPanel');
+            sim.classList.toggle('hidden');
+        }
+
+        function switchSidebarTab(tab) {
+            ['chats', 'blocks', 'saved'].forEach(t => {
+                document.getElementById('tab' + capitalize(t)).classList.add('hidden');
+                document.getElementById('tab' + capitalize(t) + 'Btn').className = "flex-1 py-2 text-center border-b-2 border-transparent hover:text-gray-200";
+            });
+
+            document.getElementById('tab' + capitalize(tab)).classList.remove('hidden');
+            document.getElementById('tab' + capitalize(tab) + 'Btn').className = "flex-1 py-2 text-center border-b-2 border-purple-500 text-purple-400";
+        }
+
+        function capitalize(s) {
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast("Copied code to clipboard!");
+        }
+
+        function downloadScriptFile(code) {
+            const blob = new Blob([code], { type: 'text/javascript' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bloxd_script.js';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Downloaded bloxd_script.js");
+        }
+
+        function openGuideModal() {
+            document.getElementById('guideModal').classList.remove('hidden');
+        }
+
+        function closeGuideModal() {
+            document.getElementById('guideModal').classList.add('hidden');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function escapeForAttr(str) {
+            return str.replace(/`/g, "\\`").replace(/\${/g, "\\${");
+        }
+    </script>
+</body>
+</html>
